@@ -61,6 +61,8 @@ int main(void) {
     printf("Device created as Absolute Mouse.\n");
     
     start_adb:
+    system("adb forward --remove tcp:6789");
+    system("adb forward tcp:6789 tcp:6789");
 
     int pen_socket = adb_bridge_init("127.0.0.1", 6789);
     
