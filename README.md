@@ -11,7 +11,7 @@ ALTablet let you use your android tablet as a graphic tablet for your computer!
 
 
 # Installations
-Grab two packages from the release page
+Grab two packages from the [release page](https://github.com/Jibhong/ALTablet/releases)
 ## PC Part
 Run server script with **sudo**
 ```
@@ -27,5 +27,5 @@ then run it with the same command
 sudo ./altablet_server
 ```
 ## Android Part
-1. Install apk file from the release page or build it your self
+1. Install apk file from the [release page](https://github.com/Jibhong/ALTablet/releases) or build it your self
 2. **Turn on usb debugging** in your android device
