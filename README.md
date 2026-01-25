@@ -29,14 +29,14 @@ sudo pacman -S android-tools
 ```
 ### 2. Start server
 ```
-sudo ./altablet_server
+./altablet_server
 ```
 or build it your self with this command
 ```
 cd server
 gcc altablet.c adb_bridge.c -o altablet_server
 ```
-then run it with the same command
+If mouse not moving, try running with sudo.
 ```
 sudo ./altablet_server
 ```
