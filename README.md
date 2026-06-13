@@ -46,7 +46,8 @@ sudo ./altablet_server
 
 ## Windows PC Part
 ```
-gcc .\altablet.c .\adb_bridge.c -o .\altablet_server.exe -lws2_32
+cd server
+gcc altablet.c adb_bridge.c -o altablet_server.exe -lws2_32
 ./altablet_server.exe
 ```
 
