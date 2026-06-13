@@ -12,7 +12,10 @@ import java.io.OutputStream
 import java.net.ServerSocket
 
 class StylusInputView(context: Context) : View(context) {
-
+    init {
+        // Set background color to Black
+        setBackgroundColor(android.graphics.Color.BLACK)
+    }
     // 1. Detect Pen Touching Screen (Down/Move/Up)
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.getToolType(0) == MotionEvent.TOOL_TYPE_STYLUS) {
