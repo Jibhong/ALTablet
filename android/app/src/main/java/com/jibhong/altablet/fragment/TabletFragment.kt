@@ -27,7 +27,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.jibhong.altablet.StylusInputView
 import kotlin.math.roundToInt
 
-class TabletPage {
+class TabletFragment {
     setContent {
         MaterialTheme {
             // Parent container to allow the box to sit anywhere

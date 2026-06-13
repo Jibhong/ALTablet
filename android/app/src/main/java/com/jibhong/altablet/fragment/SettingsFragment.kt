@@ -1,13 +1,6 @@
-import androidx.compose.material3.Text
+package com.jibhong.altablet.fragment
 
-@Composable
-fun SettingsPage() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Settings Screen")
-    }
+
+class SettingsFragment {
+
 }
