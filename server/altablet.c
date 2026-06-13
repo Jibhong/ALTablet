@@ -29,10 +29,7 @@ void send_mouse(int fd, float x, float y, bool is_down)
 {
     emit(fd, EV_ABS, ABS_X, (int)x);
     emit(fd, EV_ABS, ABS_Y, (int)y);
-
-    if (is_down)
-        emit(fd, EV_KEY, BTN_LEFT, is_down);
-
+    emit(fd, EV_KEY, BTN_LEFT, is_down);
     emit(fd, EV_SYN, SYN_REPORT, 0);
 }
 void clear_mouse(int fd)
