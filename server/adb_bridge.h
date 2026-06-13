@@ -1,6 +1,8 @@
 #ifndef ADB_BRIDGE_H
 #define ADB_BRIDGE_H
 
+#include <stdint.h>
+
 typedef struct {
     float x;
     float y;
@@ -9,7 +11,7 @@ typedef struct {
 } PenData;
 
 // Returns a socket file descriptor or -1 on failure
-int adb_bridge_init(const char* host, int port);
+intptr_t adb_bridge_init(const char* host, int port);
 
 // Blocks until a full line of data is received. Returns 1 on success, 0 on failure.
 int adb_bridge_receive(int sock, PenData *out_data);

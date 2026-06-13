@@ -10,14 +10,17 @@ ALTablet let you use your android tablet as a graphic tablet for your computer!
 | --- | --- |
 | ✅ | Control your mouse with your Android device's stylus |
 | ✅ | Low latency input stream |
-| ⏳ | Customize tablet input area |
-| ⏳ | Stylus pressure support |
-| ⏳ | Finger input support |
+| ✅ | Customize tablet input area |
+| ⏳ | Save custom input area |
+| 🚫 | Stylus pressure support |
 
+✅ Finished
+⏳ Someday...
+🚫 Not Planned
 
 # Installations
 Grab two packages from the [release page](https://github.com/Jibhong/ALTablet/releases)
-## PC Part
+## Linux PC Part
 ### 1. Install adb-tools
 Debian / Ubuntu / Mint / Pop!
 ```
@@ -40,7 +43,14 @@ If mouse not moving, try running with sudo.
 ```
 sudo ./altablet_server
 ```
+
+## Windows PC Part
+```
+gcc .\altablet.c .\adb_bridge.c -o .\altablet_server.exe -lws2_32
+./altablet_server.exe
+```
+
 ## Android Part
 1. Install apk file from the [release page](https://github.com/Jibhong/ALTablet/releases) or build it your self
 2. **Turn on usb debugging** in your android device
-3. Connect your android device to your pc
+3. Connect your android device to your pc via USB
