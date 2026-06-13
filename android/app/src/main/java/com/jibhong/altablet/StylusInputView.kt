@@ -1,7 +1,7 @@
-package com.jibhong.altablet.ui.theme
+package com.jibhong.altablet
 
 import android.content.Context
-import android.util.AttributeSet
+import android.graphics.Color
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -14,7 +14,7 @@ import java.net.ServerSocket
 class StylusInputView(context: Context) : View(context) {
     init {
         // Set background color to Black
-        setBackgroundColor(android.graphics.Color.BLACK)
+        setBackgroundColor(Color.BLACK)
     }
     // 1. Detect Pen Touching Screen (Down/Move/Up)
     override fun onTouchEvent(event: MotionEvent): Boolean {
