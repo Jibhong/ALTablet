@@ -62,7 +62,7 @@ int adb_bridge_receive(int sock, PenData *out_data)
     if (bytes_read > 0)
     {
         buffer[bytes_read] = '\0';
-        printf("Received: %s len: %d\n", buffer, bytes_read);
+        // printf("Received: %s len: %d\n", buffer, bytes_read);
     }
 
     
