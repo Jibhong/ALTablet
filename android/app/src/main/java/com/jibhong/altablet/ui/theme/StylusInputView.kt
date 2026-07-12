@@ -76,36 +76,44 @@ class StylusInputView(context: Context) : View(context) {
         startSender()
 
         scope.launch(Dispatchers.IO) {
-            try {
-                serverSocket?.close()
-                serverSocket = ServerSocket(6789)
+            while (true) {
+                try {
+                    serverSocket?.close()
+                    serverSocket = ServerSocket(6789)
 
-                while (true) {
-                    Log.d("USB_COMM", "Waiting for connection...")
-                    val client = serverSocket!!.accept()
-                    Log.d("USB_COMM", "Client connected!")
+                    while (true) {
+                        Log.d("USB_COMM", "Waiting for connection...")
+                        val client = serverSocket!!.accept()
+                        Log.d("USB_COMM", "Client connected!")
 
-                    // Disable Nagle's algorithm — send packets immediately
-                    client.tcpNoDelay = true
+                        // Disable Nagle's algorithm — send packets immediately
+                        client.tcpNoDelay = true
 
-                    // Use BufferedOutputStream for efficient writes
-                    outStream = BufferedOutputStream(client.getOutputStream(), 4096)
+                        // Use BufferedOutputStream for efficient writes
+                        outStream = BufferedOutputStream(client.getOutputStream(), 4096)
 
-                    try {
-                        while (true) {
-                            // Test connection every second
-                            outStream?.write(0)  // harmless keepalive
-                            outStream?.flush()
-                            Thread.sleep(1000)
+                        try {
+                            while (true) {
+                                // If startSender gets a broken pipe, it sets outStream to null.
+                                // We must throw here to break the loop and go back to accept().
+                                if (outStream == null) {
+                                    throw Exception("Stream was closed by sender")
+                                }
+                                // Test connection every second
+                                outStream?.write(0)  // harmless keepalive
+                                outStream?.flush()
+                                Thread.sleep(1000)
+                            }
+                        } catch (e: Exception) {
+                            Log.e("USB_COMM", "Client disconnected, waiting for new client...")
+                            outStream = null
+                            client.close()
                         }
-                    } catch (e: Exception) {
-                        Log.e("USB_COMM", "Client disconnected, waiting for new client...")
-                        outStream = null
-                        client.close()
                     }
+                } catch (e: Exception) {
+                    Log.e("USB_COMM", "Server crashed, restarting in 1s", e)
+                    Thread.sleep(1000)
                 }
-            } catch (e: Exception) {
-                Log.e("USB_COMM", "Server crashed", e)
             }
         }
     }
