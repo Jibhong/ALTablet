@@ -28,6 +28,12 @@ android {
                 "proguard-rules.pro"
             )
         }
+        register("releaseWithKey") {
+            // Inherit all optimizations, shrinking, and proguard settings from release
+            initWith(getByName("release"))
+            // Override the signing configuration to use the local debug key
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
