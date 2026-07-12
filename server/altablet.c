@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 
 #ifdef __linux__
 #include <unistd.h>
@@ -82,8 +83,35 @@ void clear_mouse()
 
 #endif
 
-int main(void)
+int main(int argc, char *argv[])
 {
+#ifdef DEBUG
+    /* Debug flags: -r = polling rate, -p = position data */
+    bool dbg_rate = false;
+    bool dbg_pos  = false;
+
+    for (int i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "-r") == 0) dbg_rate = true;
+        else if (strcmp(argv[i], "-p") == 0) dbg_pos = true;
+        else
+        {
+            printf("Usage: %s [-r] [-p]\n", argv[0]);
+            printf("  -r  Print polling rate (samples/sec)\n");
+            printf("  -p  Print received position data\n");
+            return 1;
+        }
+    }
+
+    if (!dbg_rate && !dbg_pos)
+    {
+        printf("Debug build: no flags specified, enabling all output.\n");
+        printf("  -r  Print polling rate (samples/sec)\n");
+        printf("  -p  Print received position data\n");
+        dbg_rate = true;
+        dbg_pos  = true;
+    }
+#endif
 #ifdef __linux__
 
     int fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
@@ -150,11 +178,40 @@ start_adb:
     printf("Bridge Connected! Emulating Mouse...\n");
 
     PenData current_pen;
+
+#ifdef DEBUG
+    /* Performance counter: samples per second */
+    int sample_count = 0;
+    clock_t last_print = clock();
+#endif
+
     while (1)
     {
         int result = adb_bridge_receive(pen_socket, &current_pen);
         if (result == 1)
         {
+#ifdef DEBUG
+            sample_count++;
+
+            if (dbg_rate)
+            {
+                clock_t now = clock();
+                double elapsed = (double)(now - last_print) / CLOCKS_PER_SEC;
+                if (elapsed >= 1.0)
+                {
+                    printf("Polling rate: %d samples/sec\n", sample_count);
+                    sample_count = 0;
+                    last_print = now;
+                }
+            }
+
+            if (dbg_pos)
+            {
+                printf("Pos: (%.0f, %.0f) pressure=%.2f hover=%d\n",
+                       current_pen.x, current_pen.y,
+                       current_pen.pressure, current_pen.is_hovering);
+            }
+#endif
 #ifdef __linux__
             send_mouse(fd, current_pen.x, current_pen.y, current_pen.pressure > 0);
 #endif
