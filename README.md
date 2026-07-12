@@ -12,11 +12,12 @@ ALTablet lets you use your android tablet as a graphic tablet for your computer!
 | ✅ | Low latency input stream (Peak ~600Hz on supported devices like Samsung Galaxy Tab S8) |
 | ✅ | Customize tablet input area |
 | ⏳ | Save custom input area |
-| 🚫 | Stylus pressure support |
+| ⏬ | Stylus pressure support |
 
 ✅ Finished
 ⏳ Someday...
-🚫 Not Planned
+⏬ Not Planned
+🚫 Won't Do
 
 # Installations
 Grab two packages from the [release page](https://github.com/Jibhong/ALTablet/releases)
