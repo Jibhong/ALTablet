@@ -182,7 +182,12 @@ start_adb:
 #ifdef DEBUG
     /* Performance counter: samples per second */
     int sample_count = 0;
+#ifdef _WIN32
     clock_t last_print = clock();
+#else
+    struct timespec last_print;
+    clock_gettime(CLOCK_MONOTONIC, &last_print);
+#endif
 #endif
 
     while (1)
@@ -195,8 +200,15 @@ start_adb:
 
             if (dbg_rate)
             {
+#ifdef _WIN32
                 clock_t now = clock();
                 double elapsed = (double)(now - last_print) / CLOCKS_PER_SEC;
+#else
+                struct timespec now;
+                clock_gettime(CLOCK_MONOTONIC, &now);
+                double elapsed = (now.tv_sec - last_print.tv_sec) + 
+                                 (now.tv_nsec - last_print.tv_nsec) / 1e9;
+#endif
                 if (elapsed >= 1.0)
                 {
                     printf("Polling rate: %d samples/sec\n", sample_count);
