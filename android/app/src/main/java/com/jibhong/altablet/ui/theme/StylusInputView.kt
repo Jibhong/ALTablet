@@ -2,6 +2,7 @@ package com.jibhong.altablet.ui.theme
 
 import android.content.Context
 import android.util.Log
+import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
 import kotlinx.coroutines.CoroutineScope
@@ -18,43 +19,24 @@ class StylusInputView(context: Context) : View(context) {
         setBackgroundColor(android.graphics.Color.BLACK)
     }
 
-    // 1. Detect Pen Touching Screen (Down/Move/Up)
-    // Extracts ALL batched historical samples for maximum polling rate
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+//        Lower input latency
+        requestUnbufferedDispatch(InputDevice.SOURCE_CLASS_POINTER)
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.getToolType(0) == MotionEvent.TOOL_TYPE_STYLUS) {
-            // Process ALL batched historical samples first (the key to 240Hz+)
-            // Android batches 2-4 intermediate samples between display frames
-            for (i in 0 until event.historySize) {
-                sendSample(
-                    event.getHistoricalX(i),
-                    event.getHistoricalY(i),
-                    event.getHistoricalPressure(i),
-                    isHovering = false
-                )
-            }
-            // Then process the current (most recent) sample
             sendSample(event.x, event.y, event.pressure, isHovering = false)
             return true
         }
         return super.onTouchEvent(event)
     }
 
-    // 2. Detect Pen Hovering (Movement without contact)
-    // Also extracts historical samples for hover events
     override fun onHoverEvent(event: MotionEvent): Boolean {
         if (event.getToolType(0) == MotionEvent.TOOL_TYPE_STYLUS) {
             when (event.action) {
-                MotionEvent.ACTION_HOVER_MOVE -> {
-                    for (i in 0 until event.historySize) {
-                        sendSample(
-                            event.getHistoricalX(i),
-                            event.getHistoricalY(i),
-                            0f,
-                            isHovering = true
-                        )
-                    }
-                    sendSample(event.x, event.y, 0f, isHovering = true)
-                }
+                MotionEvent.ACTION_HOVER_MOVE -> sendSample(event.x, event.y, 0f, isHovering = true)
                 MotionEvent.ACTION_HOVER_ENTER -> Log.d("Stylus", "Hover Entered")
                 MotionEvent.ACTION_HOVER_EXIT -> Log.d("Stylus", "Hover Exited")
             }
@@ -62,7 +44,6 @@ class StylusInputView(context: Context) : View(context) {
         }
         return super.onHoverEvent(event)
     }
-
     private var outStream: OutputStream? = null
     private var serverSocket: ServerSocket? = null
 
