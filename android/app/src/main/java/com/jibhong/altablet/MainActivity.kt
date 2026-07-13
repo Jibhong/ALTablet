@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -94,21 +95,26 @@ fun MainComponent() {
     val screenWidth = configuration.screenWidthDp.dp
     val screenHeight = configuration.screenHeightDp.dp
 
-    Box(modifier = Modifier.fillMaxSize().background(if (imageUriString == null) Color.Black else Color.Transparent)) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        // Background Image Layer - Isolated from interactive layer
         if (imageUriString != null) {
             AsyncImage(
                 model = imageUriString,
                 contentDescription = "Background",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer() // Offloads to a separate hardware layer
             )
         }
 
+        // Interactive Digitizer Layer
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                 .size(width, height)
                 .then(if (!isLocked) Modifier.border(2.dp, Color.White) else Modifier)
+                .graphicsLayer() // Isolates this moving box into its own layer
         ) {
 
             if (!isLocked) {
