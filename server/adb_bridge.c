@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 /* =========================================================
  *  PLATFORM SOCKET INCLUDES & MACROS
@@ -81,53 +82,53 @@ intptr_t adb_bridge_init(const char *host, int port)
  * ========================================================= */
 int adb_bridge_receive(int sock, PenData *out_data)
 {
-    while (1) {
-        if (line_len > 0) {
-            unsigned char type = (unsigned char)line_buf[0];
-            if (type == 0) {
-                /* Keepalive, discard 1 byte */
-                line_len--;
-                if (line_len > 0) memmove(line_buf, line_buf + 1, line_len);
-                continue;
-            } else if (type == 1) {
-                if (line_len >= 10) {
-                    /* We have a full data packet */
-                    uint16_t x_be, y_be;
-                    uint32_t p_be;
-                    memcpy(&x_be, line_buf + 1, 2);
-                    memcpy(&y_be, line_buf + 3, 2);
-                    memcpy(&p_be, line_buf + 5, 4);
-                    
-                    out_data->x = (float)ntohs(x_be);
-                    out_data->y = (float)ntohs(y_be);
-                    
-                    uint32_t p_host = ntohl(p_be);
-                    memcpy(&out_data->pressure, &p_host, 4);
-                    
-                    out_data->is_hovering = line_buf[9];
-                    
-                    line_len -= 10;
-                    if (line_len > 0) memmove(line_buf, line_buf + 10, line_len);
-                    
-                    return 1;
-                } else {
-                    /* Need more data to form a full 10-byte packet */
-                    break;
-                }
-            } else {
-                /* Unknown packet type, out of sync! Discard 1 byte to try resync */
-                line_len--;
-                if (line_len > 0) memmove(line_buf, line_buf + 1, line_len);
-                continue;
-            }
-        } else {
-            break;
+    size_t pos = 0;
+
+    while (pos < line_len) {
+        unsigned char type = (unsigned char)line_buf[pos];
+
+        if (type == 0) {          /* keepalive */
+            pos++;
+            continue;
         }
+
+        if (type == 1) {
+            if (line_len - pos < 10) break;   /* need more bytes */
+
+            uint16_t x_be, y_be;
+            uint32_t p_be;
+            memcpy(&x_be, line_buf + pos + 1, 2);
+            memcpy(&y_be, line_buf + pos + 3, 2);
+            memcpy(&p_be, line_buf + pos + 5, 4);
+
+            out_data->x = (float)ntohs(x_be);
+            out_data->y = (float)ntohs(y_be);
+
+            uint32_t p_host = ntohl(p_be);
+            float pressure;
+            memcpy(&pressure, &p_host, 4);
+            out_data->pressure = isfinite(pressure) ? pressure : 0.0f;
+
+            out_data->is_hovering = (line_buf[pos + 9] != 0);
+
+            pos += 10;
+            line_len -= pos;
+            if (line_len > 0) memmove(line_buf, line_buf + pos, line_len);
+            return 1;
+        }
+
+        /* unknown type: just advance the cursor, don't shift memory yet */
+        pos++;
     }
 
-    int space = (int)sizeof(line_buf) - line_len;
+    /* drained keepalives/garbage without a full packet — compact once */
+    if (pos > 0) {
+        line_len -= pos;
+        if (line_len > 0) memmove(line_buf, line_buf + pos, line_len);
+    }
+
+    int space = (int)sizeof(line_buf) - (int)line_len;
     if (space <= 0) {
-        /* Buffer full but no valid state */
         line_len = 0;
         return 0;
     }
@@ -137,7 +138,6 @@ int adb_bridge_receive(int sock, PenData *out_data)
         printf("Connection closed by Android device.\n");
         return -1;
     }
-
     line_len += bytes_read;
     return 0;
 }
