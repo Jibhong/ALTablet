@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import java.io.BufferedOutputStream
 import java.io.OutputStream
 import java.net.ServerSocket
+import java.nio.ByteBuffer
 
 class StylusInputView(context: Context) : View(context) {
     init {
@@ -49,8 +50,9 @@ class StylusInputView(context: Context) : View(context) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    // Lock-free channel for sending data — avoids per-event coroutine overhead
-    private val sendChannel = Channel<ByteArray>(capacity = Channel.UNLIMITED)
+    // Lock-free conflated channel: keeps only the LATEST sample.
+    // If the network or PC lags, older packets are instantly dropped, eliminating latency spikes.
+    private val sendChannel = Channel<ByteArray>(capacity = Channel.CONFLATED)
 
     fun startServer() {
         // Start the single dedicated writer coroutine
@@ -69,9 +71,10 @@ class StylusInputView(context: Context) : View(context) {
 
                         // Disable Nagle's algorithm — send packets immediately
                         client.tcpNoDelay = true
+                        client.trafficClass = 0x10 // IPTOS_LOWDELAY
 
-                        // Use BufferedOutputStream for efficient writes
-                        outStream = BufferedOutputStream(client.getOutputStream(), 4096)
+                        // Write directly to the socket stream to bypass intermediate buffers
+                        outStream = client.getOutputStream()
 
                         try {
                             while (true) {
@@ -128,8 +131,13 @@ class StylusInputView(context: Context) : View(context) {
         // val tilt = event.getAxisValue(MotionEvent.AXIS_TILT)
         // val orientation = event.getAxisValue(MotionEvent.AXIS_ORIENTATION)
 
-        val hoverInt = if (isHovering) 1 else 0
-        val data = "$x,$y,$pressure,$hoverInt\n".toByteArray()
-        sendChannel.trySend(data) // Non-blocking — never stalls the UI thread
+        val buffer = ByteBuffer.allocate(10)
+        buffer.put(1.toByte()) // Type 1: Data
+        buffer.putShort(x)
+        buffer.putShort(y)
+        buffer.putFloat(pressure)
+        buffer.put(if (isHovering) 1.toByte() else 0.toByte())
+
+        sendChannel.trySend(buffer.array()) // Non-blocking — never stalls the UI thread
     }
 }
