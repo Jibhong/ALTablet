@@ -172,7 +172,7 @@ start_adb:
     if (pen_socket < 0)
     {
         printf("Failed to connect. Is the Android app running and ADB forwarded?\n");
-        return 1;
+        goto restart_adb;
     }
 
     printf("Bridge Connected! Emulating Mouse...\n");
@@ -243,7 +243,7 @@ start_adb:
             break;
         }
     }
-
+restart_adb:
     adb_bridge_close(pen_socket);
     goto start_adb;
 

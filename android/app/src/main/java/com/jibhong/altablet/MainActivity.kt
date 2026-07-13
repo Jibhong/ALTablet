@@ -331,7 +331,7 @@ fun MainComponent() {
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Reload")
+                        Text("Load")
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
