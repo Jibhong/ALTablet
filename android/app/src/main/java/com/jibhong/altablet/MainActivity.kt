@@ -113,7 +113,7 @@ fun MainComponent() {
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                 .size(width, height)
-                .then(if (!isLocked) Modifier.border(2.dp, Color.White) else Modifier)
+                .then(if (!isLocked || showDropdown) Modifier.border(2.dp, Color.White) else Modifier)
                 .graphicsLayer() // Isolates this moving box into its own layer
         ) {
 
@@ -200,7 +200,7 @@ fun MainComponent() {
         // Top right button for control panel
         Box(modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) {
             IconButton(onClick = { showDropdown = true }) {
-                if (!isLocked) {
+                if (!isLocked || showDropdown) {
                         Icon(
                         Icons.Filled.Settings,
                         contentDescription = "Settings",
