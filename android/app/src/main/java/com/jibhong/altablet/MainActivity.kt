@@ -10,7 +10,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
@@ -18,14 +17,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -34,13 +28,21 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.layout.ContentScale
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import kotlin.math.roundToInt
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.Alignment
+import coil.compose.AsyncImage
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -54,7 +56,7 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 // Parent container to allow the box to sit anywhere
                 Box(modifier = Modifier.fillMaxSize()) {
-                    ResizableBox()
+                    MainComponent()
 
                 }
             }
@@ -62,7 +64,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 @Composable
-fun ResizableBox() {
+fun MainComponent() {
     val context = LocalContext.current
     val sharedPref = context.getSharedPreferences("TabletPrefs", Context.MODE_PRIVATE)
 
@@ -75,6 +77,16 @@ fun ResizableBox() {
 
     var isLocked by remember { mutableStateOf(sharedPref.getBoolean("isLocked", false)) }
     var showDropdown by remember { mutableStateOf(false) }
+    var imageUriString by remember { mutableStateOf(sharedPref.getString("imageUri", null)) }
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            val uriStr = uri.toString()
+            imageUriString = uriStr
+            sharedPref.edit().putString("imageUri", uriStr).apply()
+        }
+    }
 
     val density = LocalDensity.current
 
@@ -82,13 +94,21 @@ fun ResizableBox() {
     val screenWidth = configuration.screenWidthDp.dp
     val screenHeight = configuration.screenHeightDp.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(if (imageUriString == null) Color.Black else Color.Transparent)) {
+        if (imageUriString != null) {
+            AsyncImage(
+                model = imageUriString,
+                contentDescription = "Background",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                 .size(width, height)
-                .background(Color.LightGray)
-                .border(2.dp, Color.Black)
+                .then(if (!isLocked) Modifier.border(2.dp, Color.White) else Modifier)
         ) {
 
             if (!isLocked) {
@@ -97,7 +117,7 @@ fun ResizableBox() {
                         .offset {
                             IntOffset(0.dp.roundToPx(), -24.dp.roundToPx())
                         }
-                        .size(width,48.dp) // Large touch target
+                        .size(width,24.dp) // Large touch target
                         .align(Alignment.TopCenter)
                         .background(Color.Yellow) // Using Red so you can see if you're hitting it
                         .pointerInput(Unit) {
@@ -116,7 +136,7 @@ fun ResizableBox() {
                         .offset {
                             IntOffset(0.dp.roundToPx(), -24.dp.roundToPx())
                         }
-                        .size(48.dp)
+                        .size(48.dp,24.dp)
                         .align(Alignment.TopEnd)
                         .background(Color.Green)
                         .pointerInput(Unit) {
@@ -165,14 +185,22 @@ fun ResizableBox() {
                         startServer()
                     }
                 },
+                update = { view ->
+                },
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
         // Top right button for control panel
-        Box(modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+        Box(modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) {
             IconButton(onClick = { showDropdown = true }) {
-                Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                if (!isLocked) {
+                        Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        tint = Color.White
+                    )
+                }
             }
             DropdownMenu(
                 expanded = showDropdown,
@@ -192,10 +220,35 @@ fun ResizableBox() {
                     }
                 )
                 DropdownMenuItem(
+                    text = { Text("Reset Position & Size") },
+                    onClick = {
+                        width = sharedPref.getFloat("width", 200f).dp
+                        height = sharedPref.getFloat("height", 200f).dp
+                        offsetX = sharedPref.getFloat("offsetX", 50f)
+                        offsetY = sharedPref.getFloat("offsetY", 50f)
+                        showDropdown = false
+                    }
+                )
+                DropdownMenuItem(
                     text = { Text(if (isLocked) "Unlock Controls" else "Lock Controls") },
                     onClick = {
                         isLocked = !isLocked
                         sharedPref.edit().putBoolean("isLocked", isLocked).apply()
+                        showDropdown = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Select Background Image") },
+                    onClick = {
+                        showDropdown = false
+                        launcher.launch(arrayOf("image/*"))
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Remove Background Image") },
+                    onClick = {
+                        imageUriString = null
+                        sharedPref.edit().remove("imageUri").apply()
                         showDropdown = false
                     }
                 )

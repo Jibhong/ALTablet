@@ -15,9 +15,9 @@ import java.net.ServerSocket
 import java.nio.ByteBuffer
 
 class StylusInputView(context: Context) : View(context) {
+    // Set background color to Transparent
     init {
-        // Set background color to Black
-        setBackgroundColor(android.graphics.Color.BLACK)
+        setBackgroundColor(android.graphics.Color.TRANSPARENT)
     }
 
     override fun onAttachedToWindow() {
