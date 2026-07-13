@@ -1,5 +1,5 @@
 # ALTablet
-ALTablet lets you use your android tablet as a graphic tablet for your computer!
+ALTablet turns your Android tablet into a high-performance graphic tablet for your computer, **focus on ultra-low latency** for competitive gaming. 
 
 ## ALTablet with [osu!](https://osu.ppy.sh/)
 
@@ -8,10 +8,11 @@ ALTablet lets you use your android tablet as a graphic tablet for your computer!
 # Features
 |  |  Feature |
 | --- | --- |
+| ✅ | **Low Latency Input Stream**|
+| ✅ | **High Polling Rate** (~480Hz on Samsung Galaxy Tab S8) |
 | ✅ | Control your mouse with your Android device's stylus |
-| ✅ | Low latency input stream (Peak ~600Hz on supported devices like Samsung Galaxy Tab S8) |
-| ✅ | Customize tablet input area |
-| ⏳ | Save custom input area |
+| ✅ | Customize tablet input area (Position, Scale and Aspect Ratio) |
+| ✅ | Custom Background Image |
 | ⏬ | Stylus pressure support |
 
 ✅ Finished
@@ -53,6 +54,14 @@ sudo ./altablet_server
 ```
 
 ## Windows PC Part
+### 1. Install adb-tools
+#### Download and Install Android SDK Platform-Tools for Windows from the [official Android developer site](https://developer.android.com/tools/releases/platform-tools)
+
+
+### 2. Start server
+Run executable from [release page](https://github.com/Jibhong/ALTablet/releases)
+
+or build it yourself with this command
 ```
 cd server
 gcc altablet.c adb_bridge.c -o altablet_server.exe -lws2_32
