@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
 import coil.compose.AsyncImage
 import kotlin.math.roundToInt
+import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
 
@@ -87,13 +88,27 @@ fun MainComponent() {
     var height by remember { mutableStateOf(sharedPref.getFloat("height", 200f).dp) }
 
     // Optional: add position state so you can move it away from the screen edge
-    var offsetX by remember { mutableStateOf(sharedPref.getFloat("offsetX", 50f)) }
-    var offsetY by remember { mutableStateOf(sharedPref.getFloat("offsetY", 50f)) }
+    var offsetX by remember { mutableFloatStateOf(sharedPref.getFloat("offsetX", 50f)) }
+    var offsetY by remember { mutableFloatStateOf(sharedPref.getFloat("offsetY", 50f)) }
 
     var isLocked by remember { mutableStateOf(sharedPref.getBoolean("isLocked", false)) }
-    var isFreeAspectRatio by remember { mutableStateOf(sharedPref.getBoolean("isFreeAspectRatio", false)) }
+    var isFreeAspectRatio by remember {
+        mutableStateOf(
+            sharedPref.getBoolean(
+                "isFreeAspectRatio",
+                false
+            )
+        )
+    }
     var showSideBar by remember { mutableStateOf(false) }
-    var aspectRatio by remember { mutableStateOf(sharedPref.getFloat("aspectRatio", 16f / 9f)) }
+    var aspectRatio by remember {
+        mutableFloatStateOf(
+            sharedPref.getFloat(
+                "aspectRatio",
+                16f / 9f
+            )
+        )
+    }
     var imageUriString by remember { mutableStateOf(sharedPref.getString("imageUri", null)) }
 
     var ratioWidthText by remember { mutableStateOf("") }
@@ -118,7 +133,7 @@ fun MainComponent() {
                 )
                 val uriStr = uri.toString()
                 imageUriString = uriStr
-                sharedPref.edit().putString("imageUri", uriStr).apply()
+                sharedPref.edit { putString("imageUri", uriStr) }
             }
         }
 
@@ -175,11 +190,9 @@ fun MainComponent() {
                         .pointerInput(Unit) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
-                                with(density) {
-                                    // Update width/height and prevent them from becoming negative
-                                    offsetX += dragAmount.x
-                                    offsetY += dragAmount.y
-                                }
+                                // Update width/height and prevent them from becoming negative
+                                offsetX += dragAmount.x
+                                offsetY += dragAmount.y
                             }
                         }
                 )
@@ -221,11 +234,11 @@ fun MainComponent() {
                                 with(density) {
                                     // Update width/height and prevent them from becoming negative
                                     width = (width + dragAmount.x.toDp()).coerceAtLeast(50.dp)
-                                    if (isFreeAspectRatio) {
-                                        height = (height + dragAmount.y.toDp()).coerceAtLeast(50.dp)
-                                    } else {
-                                        height = width / aspectRatio
-                                    }
+                                    height = if (isFreeAspectRatio)
+                                        (height + dragAmount.y.toDp()).coerceAtLeast(50.dp)
+                                    else
+                                        width / aspectRatio
+
                                 }
                             }
                         }
@@ -317,15 +330,15 @@ fun MainComponent() {
 
                     Button(
                         onClick = {
-                            sharedPref.edit()
-                                .putFloat("width", width.value)
-                                .putFloat("height", height.value)
-                                .putFloat("offsetX", offsetX)
-                                .putFloat("offsetY", offsetY)
-                                .putBoolean("isLocked", isLocked)
-                                .putBoolean("isFreeAspectRatio", isFreeAspectRatio)
-                                .putFloat("aspectRatio", aspectRatio)
-                                .apply()
+                            sharedPref.edit {
+                                putFloat("width", width.value)
+                                    .putFloat("height", height.value)
+                                    .putFloat("offsetX", offsetX)
+                                    .putFloat("offsetY", offsetY)
+                                    .putBoolean("isLocked", isLocked)
+                                    .putBoolean("isFreeAspectRatio", isFreeAspectRatio)
+                                    .putFloat("aspectRatio", aspectRatio)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -357,7 +370,7 @@ fun MainComponent() {
                     Button(
                         onClick = {
                             isLocked = !isLocked
-                            sharedPref.edit().putBoolean("isLocked", isLocked).apply()
+                            sharedPref.edit { putBoolean("isLocked", isLocked) }
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -380,7 +393,7 @@ fun MainComponent() {
                     Button(
                         onClick = {
                             imageUriString = null
-                            sharedPref.edit().remove("imageUri").apply()
+                            sharedPref.edit { remove("imageUri") }
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
