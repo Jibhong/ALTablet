@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -90,6 +91,7 @@ fun MainComponent() {
     var offsetY by remember { mutableStateOf(sharedPref.getFloat("offsetY", 50f)) }
 
     var isLocked by remember { mutableStateOf(sharedPref.getBoolean("isLocked", false)) }
+    var isFreeAspectRatio by remember { mutableStateOf(sharedPref.getBoolean("isFreeAspectRatio", false)) }
     var showSideBar by remember { mutableStateOf(false) }
     var aspectRatio by remember { mutableStateOf(sharedPref.getFloat("aspectRatio", 16f / 9f)) }
     var imageUriString by remember { mutableStateOf(sharedPref.getString("imageUri", null)) }
@@ -97,6 +99,15 @@ fun MainComponent() {
     var ratioWidthText by remember { mutableStateOf("") }
     var ratioHeightText by remember { mutableStateOf("") }
     var floatRatioText by remember { mutableStateOf(aspectRatio.toString()) }
+
+    LaunchedEffect(showSideBar) {
+        if (showSideBar && height.value > 0) {
+            val currentRatio = width.value / height.value
+            floatRatioText = currentRatio.toString()
+            ratioWidthText = floatRatioText
+            ratioHeightText = "1"
+        }
+    }
 
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -204,13 +215,17 @@ fun MainComponent() {
                         .size(48.dp) // Large touch target
                         .align(Alignment.BottomEnd)
                         .background(Color.Red) // Using Red so you can see if you're hitting it
-                        .pointerInput(Unit) {
+                        .pointerInput(isFreeAspectRatio, aspectRatio) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
                                 with(density) {
                                     // Update width/height and prevent them from becoming negative
                                     width = (width + dragAmount.x.toDp()).coerceAtLeast(50.dp)
-                                    height = width / aspectRatio
+                                    if (isFreeAspectRatio) {
+                                        height = (height + dragAmount.y.toDp()).coerceAtLeast(50.dp)
+                                    } else {
+                                        height = width / aspectRatio
+                                    }
                                 }
                             }
                         }
@@ -308,6 +323,7 @@ fun MainComponent() {
                                 .putFloat("offsetX", offsetX)
                                 .putFloat("offsetY", offsetY)
                                 .putBoolean("isLocked", isLocked)
+                                .putBoolean("isFreeAspectRatio", isFreeAspectRatio)
                                 .putFloat("aspectRatio", aspectRatio)
                                 .apply()
                         },
@@ -324,6 +340,8 @@ fun MainComponent() {
                             height = sharedPref.getFloat("height", 200f).dp
                             offsetX = sharedPref.getFloat("offsetX", 50f)
                             offsetY = sharedPref.getFloat("offsetY", 50f)
+                            isLocked = sharedPref.getBoolean("isLocked", false)
+                            isFreeAspectRatio = sharedPref.getBoolean("isFreeAspectRatio", false)
                             aspectRatio = sharedPref.getFloat("aspectRatio", 16f / 9f)
                             floatRatioText = aspectRatio.toString()
                             ratioWidthText = ""
@@ -370,6 +388,20 @@ fun MainComponent() {
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Free Aspect Ratio", style = MaterialTheme.typography.bodyLarge)
+                        Switch(
+                            checked = isFreeAspectRatio,
+                            onCheckedChange = { isFreeAspectRatio = it }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text("Aspect Ratio", style = MaterialTheme.typography.titleSmall)
                     Spacer(modifier = Modifier.height(8.dp))
@@ -460,6 +492,8 @@ fun MainComponent() {
                             height = 200f.dp
                             offsetX = 50f
                             offsetY = 50f
+                            isLocked = false
+                            isFreeAspectRatio = false
                             aspectRatio = 16f / 9f
                             floatRatioText = aspectRatio.toString()
                             ratioWidthText = ""
