@@ -53,7 +53,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
 import coil.compose.AsyncImage
-import kotlin.math.roundToInt
 import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
@@ -115,15 +114,6 @@ fun MainComponent() {
     var ratioHeightText by remember { mutableStateOf("") }
     var floatRatioText by remember { mutableStateOf(aspectRatio.toString()) }
 
-    LaunchedEffect(showSideBar) {
-        if (showSideBar && height.value > 0) {
-            val currentRatio = width.value / height.value
-            floatRatioText = currentRatio.toString()
-            ratioWidthText = floatRatioText
-            ratioHeightText = "1"
-        }
-    }
-
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri != null) {
@@ -167,7 +157,10 @@ fun MainComponent() {
         // Interactive Digitizer Layer
         Box(
             modifier = Modifier
-                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                .graphicsLayer {
+                    translationX = offsetX
+                    translationY = offsetY
+                }
                 .size(width, height)
                 .then(
                     if (!isLocked || showSideBar) Modifier.border(
@@ -175,7 +168,6 @@ fun MainComponent() {
                         Color.White
                     ) else Modifier
                 )
-                .graphicsLayer() // Isolates this moving box into its own layer
         ) {
 
             if (!isLocked) {
@@ -255,7 +247,9 @@ fun MainComponent() {
                         startServer()
                     }
                 },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(),
             )
         }
 
@@ -272,7 +266,18 @@ fun MainComponent() {
 
         // Settings Button and Side Bar
         IconButton(
-            onClick = { showSideBar = !showSideBar },
+            onClick = {
+                if (!showSideBar) {
+                    if (height.value > 0) {
+                        val currentRatio = width.value / height.value
+                        val rText = currentRatio.toString()
+                        floatRatioText = rText
+                        ratioWidthText = rText
+                        ratioHeightText = "1"
+                    }
+                }
+                showSideBar = !showSideBar
+            },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
@@ -292,231 +297,285 @@ fun MainComponent() {
             exit = slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(),
             modifier = Modifier.align(Alignment.CenterStart)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(300.dp)
-                    .graphicsLayer() // Helps with smooth animation
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
-                    .padding(16.dp)
-                    .pointerInput(Unit) {} // Consume clicks so they don't hit the background
+            SettingsSidebar(
+                width = width,
+                height = height,
+                offsetX = offsetX,
+                offsetY = offsetY,
+                isLocked = isLocked,
+                isFreeAspectRatio = isFreeAspectRatio,
+                aspectRatio = aspectRatio,
+                ratioWidthText = ratioWidthText,
+                ratioHeightText = ratioHeightText,
+                floatRatioText = floatRatioText,
+                onWidthChange = { width = it },
+                onHeightChange = { height = it },
+                onOffsetXChange = { offsetX = it },
+                onOffsetYChange = { offsetY = it },
+                onIsLockedChange = { isLocked = it },
+                onIsFreeAspectRatioChange = { isFreeAspectRatio = it },
+                onAspectRatioChange = { aspectRatio = it },
+                onImageUriStringChange = { imageUriString = it },
+                onRatioWidthTextChange = { ratioWidthText = it },
+                onRatioHeightTextChange = { ratioHeightText = it },
+                onFloatRatioTextChange = { floatRatioText = it },
+                onClose = { showSideBar = false },
+                onPickImage = { launcher.launch(arrayOf("image/*")) },
+                sharedPref = sharedPref
+            )
+        }
+    }
+}
+
+@Composable
+fun SettingsSidebar(
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    offsetX: Float,
+    offsetY: Float,
+    isLocked: Boolean,
+    isFreeAspectRatio: Boolean,
+    aspectRatio: Float,
+    ratioWidthText: String,
+    ratioHeightText: String,
+    floatRatioText: String,
+    onWidthChange: (androidx.compose.ui.unit.Dp) -> Unit,
+    onHeightChange: (androidx.compose.ui.unit.Dp) -> Unit,
+    onOffsetXChange: (Float) -> Unit,
+    onOffsetYChange: (Float) -> Unit,
+    onIsLockedChange: (Boolean) -> Unit,
+    onIsFreeAspectRatioChange: (Boolean) -> Unit,
+    onAspectRatioChange: (Float) -> Unit,
+    onImageUriStringChange: (String?) -> Unit,
+    onRatioWidthTextChange: (String) -> Unit,
+    onRatioHeightTextChange: (String) -> Unit,
+    onFloatRatioTextChange: (String) -> Unit,
+    onClose: () -> Unit,
+    onPickImage: () -> Unit,
+    sharedPref: android.content.SharedPreferences
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(300.dp)
+            .graphicsLayer {
+                // Hint to the system to keep this as a single layer during animation
+                clip = true
+                shape = androidx.compose.ui.graphics.RectangleShape
+            }
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+            .padding(16.dp)
+            .pointerInput(Unit) {} // Consume clicks
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Settings",
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                        IconButton(
-                            onClick = { showSideBar = false }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Close Settings",
-                                tint = Color.Black
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            sharedPref.edit {
-                                putFloat("width", width.value)
-                                    .putFloat("height", height.value)
-                                    .putFloat("offsetX", offsetX)
-                                    .putFloat("offsetY", offsetY)
-                                    .putBoolean("isLocked", isLocked)
-                                    .putBoolean("isFreeAspectRatio", isFreeAspectRatio)
-                                    .putFloat("aspectRatio", aspectRatio)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Save")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = {
-                            width = sharedPref.getFloat("width", 200f).dp
-                            height = sharedPref.getFloat("height", 200f).dp
-                            offsetX = sharedPref.getFloat("offsetX", 50f)
-                            offsetY = sharedPref.getFloat("offsetY", 50f)
-                            isLocked = sharedPref.getBoolean("isLocked", false)
-                            isFreeAspectRatio = sharedPref.getBoolean("isFreeAspectRatio", false)
-                            aspectRatio = sharedPref.getFloat("aspectRatio", 16f / 9f)
-                            floatRatioText = aspectRatio.toString()
-                            ratioWidthText = ""
-                            ratioHeightText = ""
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Load")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = {
-                            isLocked = !isLocked
-                            sharedPref.edit { putBoolean("isLocked", isLocked) }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (isLocked) "Unlock Controls" else "Lock & Hide Controls")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = {
-                            launcher.launch(arrayOf("image/*"))
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Select Background Image")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = {
-                            imageUriString = null
-                            sharedPref.edit { remove("imageUri") }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Remove Background Image")
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Free Aspect Ratio", style = MaterialTheme.typography.bodyLarge)
-                        Switch(
-                            checked = isFreeAspectRatio,
-                            onCheckedChange = { isFreeAspectRatio = it }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text("Aspect Ratio", style = MaterialTheme.typography.titleSmall)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("W:H Mode", style = MaterialTheme.typography.labelSmall)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = ratioWidthText,
-                            onValueChange = { input ->
-                                val filtered = input.filter { it.isDigit() }
-                                val value = filtered.toIntOrNull()
-                                if (value != null) {
-                                    val coerced = value.coerceIn(1, 100)
-                                    ratioWidthText = coerced.toString()
-                                    ratioHeightText.toFloatOrNull()?.let { h ->
-                                        if (h != 0f) floatRatioText =
-                                            (coerced.toFloat() / h).toString()
-                                    }
-                                } else {
-                                    ratioWidthText = ""
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true
-                        )
-                        Text(" : ", modifier = Modifier.padding(horizontal = 4.dp))
-                        OutlinedTextField(
-                            value = ratioHeightText,
-                            onValueChange = { input ->
-                                val filtered = input.filter { it.isDigit() }
-                                val value = filtered.toIntOrNull()
-                                if (value != null) {
-                                    val coerced = value.coerceIn(1, 100)
-                                    ratioHeightText = coerced.toString()
-                                    ratioWidthText.toFloatOrNull()?.let { w ->
-                                        if (coerced != 0) floatRatioText =
-                                            (w / coerced.toFloat()).toString()
-                                    }
-                                } else {
-                                    ratioHeightText = ""
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Float Mode (0.1 - 10.0)", style = MaterialTheme.typography.labelSmall)
-                    OutlinedTextField(
-                        value = floatRatioText,
-                        onValueChange = { input ->
-                            val filtered = input.filter { it.isDigit() || it == '.' }
-                            floatRatioText = filtered
-                            filtered.toFloatOrNull()?.let { f ->
-                                ratioWidthText = f.toString()
-                                ratioHeightText = "1"
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close Settings",
+                        tint = Color.Black
                     )
-                    Button(
-                        onClick = {
-                            floatRatioText.toFloatOrNull()?.let { r ->
-                                val finalRatio = r.coerceIn(0.1f, 10.0f)
-                                aspectRatio = finalRatio
-                                height = width / aspectRatio
-
-                                floatRatioText = finalRatio.toString()
-                                ratioWidthText = finalRatio.toString()
-                                ratioHeightText = "1"
-                            }
-                        },
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .align(Alignment.End)
-                    ) {
-                        Text("Apply")
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                    Button(
-                        onClick = {
-                            width = 200f.dp
-                            height = 200f.dp
-                            offsetX = 50f
-                            offsetY = 50f
-                            isLocked = false
-                            isFreeAspectRatio = false
-                            aspectRatio = 16f / 9f
-                            floatRatioText = aspectRatio.toString()
-                            ratioWidthText = ""
-                            ratioHeightText = ""
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Reset")
-                    }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    sharedPref.edit {
+                        putFloat("width", width.value)
+                            .putFloat("height", height.value)
+                            .putFloat("offsetX", offsetX)
+                            .putFloat("offsetY", offsetY)
+                            .putBoolean("isLocked", isLocked)
+                            .putBoolean("isFreeAspectRatio", isFreeAspectRatio)
+                            .putFloat("aspectRatio", aspectRatio)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    onWidthChange(sharedPref.getFloat("width", 200f).dp)
+                    onHeightChange(sharedPref.getFloat("height", 200f).dp)
+                    onOffsetXChange(sharedPref.getFloat("offsetX", 50f))
+                    onOffsetYChange(sharedPref.getFloat("offsetY", 50f))
+                    onIsLockedChange(sharedPref.getBoolean("isLocked", false))
+                    onIsFreeAspectRatioChange(sharedPref.getBoolean("isFreeAspectRatio", false))
+                    onAspectRatioChange(sharedPref.getFloat("aspectRatio", 16f / 9f))
+                    onFloatRatioTextChange(sharedPref.getFloat("aspectRatio", 16f / 9f).toString())
+                    onRatioWidthTextChange("")
+                    onRatioHeightTextChange("")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Load")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    val newLocked = !isLocked
+                    onIsLockedChange(newLocked)
+                    sharedPref.edit { putBoolean("isLocked", newLocked) }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (isLocked) "Unlock Controls" else "Lock & Hide Controls")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = onPickImage,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Select Background Image")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    onImageUriStringChange(null)
+                    sharedPref.edit { remove("imageUri") }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Remove Background Image")
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Free Aspect Ratio", style = MaterialTheme.typography.bodyLarge)
+                Switch(
+                    checked = isFreeAspectRatio,
+                    onCheckedChange = onIsFreeAspectRatioChange
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Aspect Ratio", style = MaterialTheme.typography.titleSmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("W:H Mode", style = MaterialTheme.typography.labelSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = ratioWidthText,
+                    onValueChange = { input ->
+                        val filtered = input.filter { it.isDigit() }
+                        val value = filtered.toIntOrNull()
+                        if (value != null) {
+                            val coerced = value.coerceIn(1, 100)
+                            onRatioWidthTextChange(coerced.toString())
+                            ratioHeightText.toFloatOrNull()?.let { h ->
+                                if (h != 0f) onFloatRatioTextChange((coerced.toFloat() / h).toString())
+                            }
+                        } else {
+                            onRatioWidthTextChange("")
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                Text(" : ", modifier = Modifier.padding(horizontal = 4.dp))
+                OutlinedTextField(
+                    value = ratioHeightText,
+                    onValueChange = { input ->
+                        val filtered = input.filter { it.isDigit() }
+                        val value = filtered.toIntOrNull()
+                        if (value != null) {
+                            val coerced = value.coerceIn(1, 100)
+                            onRatioHeightTextChange(coerced.toString())
+                            ratioWidthText.toFloatOrNull()?.let { w ->
+                                if (coerced != 0) onFloatRatioTextChange((w / coerced.toFloat()).toString())
+                            }
+                        } else {
+                            onRatioHeightTextChange("")
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Float Mode (0.1 - 10.0)", style = MaterialTheme.typography.labelSmall)
+            OutlinedTextField(
+                value = floatRatioText,
+                onValueChange = { input ->
+                    val filtered = input.filter { it.isDigit() || it == '.' }
+                    onFloatRatioTextChange(filtered)
+                    filtered.toFloatOrNull()?.let { f ->
+                        onRatioWidthTextChange(f.toString())
+                        onRatioHeightTextChange("1")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true
+            )
+            Button(
+                onClick = {
+                    floatRatioText.toFloatOrNull()?.let { r ->
+                        val finalRatio = r.coerceIn(0.1f, 10.0f)
+                        onAspectRatioChange(finalRatio)
+                        onHeightChange(width / finalRatio)
+
+                        onFloatRatioTextChange(finalRatio.toString())
+                        onRatioWidthTextChange(finalRatio.toString())
+                        onRatioHeightTextChange("1")
+                    }
+                },
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .align(Alignment.End)
+            ) {
+                Text("Apply")
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            Button(
+                onClick = {
+                    onWidthChange(200f.dp)
+                    onHeightChange(200f.dp)
+                    onOffsetXChange(50f)
+                    onOffsetYChange(50f)
+                    onIsLockedChange(false)
+                    onIsFreeAspectRatioChange(false)
+                    onAspectRatioChange(16f / 9f)
+                    onFloatRatioTextChange((16f / 9f).toString())
+                    onRatioWidthTextChange("")
+                    onRatioHeightTextChange("")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Reset")
             }
         }
     }
