@@ -12,6 +12,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <mmsystem.h>
 #endif
 
 #include "adb_bridge.h"
@@ -163,6 +164,17 @@ int main(int argc, char *argv[])
 
 #endif
 
+#ifdef _WIN32
+    /* Boost priority so the server stays responsive even under heavy load.
+     * The process is I/O-bound (blocks on recv), so the extra priority
+     * doesn't waste CPU — it just ensures we get scheduled promptly. */
+    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+
+    /* Request 1 ms timer resolution for tighter scheduling granularity */
+    timeBeginPeriod(1);
+#endif
+
 start_adb:
     system("adb forward --remove tcp:6789");
     system("adb forward tcp:6789 tcp:6789");
@@ -195,8 +207,21 @@ start_adb:
         int result = adb_bridge_receive(pen_socket, &current_pen);
         if (result == 1)
         {
+            /* Drain-to-latest: if multiple packets accumulated while we
+             * were preempted (game / tab switch), skip intermediate
+             * positions and jump straight to the newest one.  Only the
+             * final cursor position matters for smooth movement. */
+            PenData latest = current_pen;
+            int drained = 0;
+            while (adb_bridge_receive(pen_socket, &current_pen) == 1)
+            {
+                latest = current_pen;
+                drained++;
+            }
+            current_pen = latest;
+
 #ifdef DEBUG
-            sample_count++;
+            sample_count += 1 + drained;
 
             if (dbg_rate)
             {
@@ -219,9 +244,12 @@ start_adb:
 
             if (dbg_pos)
             {
-                printf("Pos: (%.0f, %.0f) pressure=%.2f hover=%d\n",
+                printf("Pos: (%.0f, %.0f) pressure=%.2f hover=%d",
                        current_pen.x, current_pen.y,
                        current_pen.pressure, current_pen.is_hovering);
+                if (drained > 0)
+                    printf(" [skipped %d stale]", drained);
+                printf("\n");
             }
 #endif
 #ifdef __linux__
@@ -241,6 +269,14 @@ start_adb:
             clear_mouse();
 #endif
             break;
+        }
+        else
+        {
+            /* No data available right now (non-blocking socket returned
+             * EWOULDBLOCK).  Use select() to sleep efficiently until the
+             * next packet arrives — avoids busy-spinning the CPU. */
+            int wr = adb_bridge_wait(pen_socket, 1000);
+            if (wr == -1) break;   /* socket error → reconnect */
         }
     }
 restart_adb:

@@ -18,6 +18,8 @@
     #include <arpa/inet.h>
     #include <sys/socket.h>
     #include <netinet/tcp.h>
+    #include <fcntl.h>
+    #include <errno.h>
 #endif
 #ifdef _WIN32
     #include <winsock2.h>
@@ -51,6 +53,12 @@ intptr_t adb_bridge_init(const char *host, int port)
     int flag = 1;
     setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
+    /* Shrink kernel receive buffer to prevent stale pen data from
+     * accumulating during scheduling gaps.  We only care about the
+     * latest cursor position, so a small buffer is fine. */
+    int rcvbuf = 4096;
+    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&rcvbuf, sizeof(rcvbuf));
+
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
@@ -61,7 +69,17 @@ intptr_t adb_bridge_init(const char *host, int port)
     {
         return -1;
     }
-    
+
+    /* Set non-blocking AFTER connect so the drain-to-latest loop
+     * can quickly consume all buffered packets without blocking. */
+#ifdef _WIN32
+    u_long nb_mode = 1;
+    ioctlsocket(sock, FIONBIO, &nb_mode);
+#else
+    int flags = fcntl(sock, F_GETFL, 0);
+    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+#endif
+
     /* Reset line buffer on new connection */
     line_len = 0;
 
@@ -134,12 +152,48 @@ int adb_bridge_receive(int sock, PenData *out_data)
     }
 
     int bytes_read = recv(sock, line_buf + line_len, space, 0);
-    if (bytes_read <= 0) {
-        printf("Connection closed by Android device.\n");
-        return -1;
+    if (bytes_read > 0) {
+        line_len += bytes_read;
+        return 0;
     }
-    line_len += bytes_read;
-    return 0;
+    if (bytes_read == 0) {
+        printf("Connection closed by Android device.\n");
+        return -1;  /* peer closed connection */
+    }
+    /* bytes_read < 0: check for EWOULDBLOCK (normal for non-blocking) */
+#ifdef _WIN32
+    if (WSAGetLastError() == WSAEWOULDBLOCK)
+        return 0;  /* no data available right now */
+#else
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+        return 0;  /* no data available right now */
+#endif
+    printf("Connection error.\n");
+    return -1;
+}
+
+/* =========================================================
+ *  adb_bridge_wait
+ *  
+ *  Efficiently waits for data on the socket using select().
+ *  Returns:  1 = data ready
+ *            0 = timeout
+ *           -1 = error
+ * ========================================================= */
+int adb_bridge_wait(int sock, int timeout_ms)
+{
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET((unsigned int)sock, &readfds);
+
+    struct timeval tv;
+    tv.tv_sec  = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+    int result = select(sock + 1, &readfds, NULL, NULL, &tv);
+    if (result > 0) return 1;
+    if (result == 0) return 0;
+    return -1;
 }
 
 /* =========================================================
