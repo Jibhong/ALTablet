@@ -184,6 +184,8 @@ start_adb:
     if (pen_socket < 0)
     {
         printf("Failed to connect. Is the Android app running and ADB forwarded?\n");
+        printf("Retry in 1 seconds...\n");
+        Sleep(1000);
         goto restart_adb;
     }
 

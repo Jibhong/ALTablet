@@ -64,12 +64,12 @@ Run executable from [release page](https://github.com/Jibhong/ALTablet/releases)
 or build it yourself with this command
 ```
 cd server
-gcc altablet.c adb_bridge.c -o altablet_server.exe -lws2_32
+gcc altablet.c adb_bridge.c -o altablet_server.exe -lws2_32 -lwinmm
 ./altablet_server.exe
 ```
 Debug build:
 ```
-gcc altablet.c adb_bridge.c -o debug.exe -lws2_32 -DDEBUG
+gcc altablet.c adb_bridge.c -o debug.exe -lws2_32 -lwinmm -DDEBUG
 ./debug.exe -r        # print polling rate
 ./debug.exe -p        # print position data
 ./debug.exe -r -p     # print both
