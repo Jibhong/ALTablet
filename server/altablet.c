@@ -185,7 +185,12 @@ start_adb:
     {
         printf("Failed to connect. Is the Android app running and ADB forwarded?\n");
         printf("Retry in 1 seconds...\n");
+#ifdef _WIN32
         Sleep(1000);
+#endif
+#ifdef __linux__
+        sleep(1);
+#endif
         goto restart_adb;
     }
 
